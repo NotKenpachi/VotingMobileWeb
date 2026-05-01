@@ -263,6 +263,44 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ── SWIPE GESTURE INDICATORS ───────────────────────────────── */
+.question-card {
+  position: relative;   /* anchor the absolute indicators */
+  overflow: visible;
+}
+
+/* YES (right) and NO (left) labels revealed during a drag */
+.swipe-indicator {
+  position: absolute;
+  top: 18px;
+  padding: 5px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  opacity: 0;            /* shown via JS during touchmove */
+  pointer-events: none;
+  border: 2px solid currentColor;
+  transition: opacity 0.08s;
+  user-select: none;
+}
+
+.indicator-no  { left: 18px;  color: var(--no); }
+.indicator-yes { right: 18px; color: var(--yes); }
+
+/* Hint line under the question text */
+.swipe-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 20px;
+  opacity: 0.5;
+  transition: opacity 0.5s;
+  user-select: none;
+}
+
+.swipe-hint.hidden { opacity: 0; pointer-events: none; }
+
 /* ── VOTE ANIMATIONS ─────────────────────────────────────────── */
 @keyframes slide-out-left {
   from { opacity: 1; transform: translateX(0) scale(1); }

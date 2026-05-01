@@ -4,6 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>YES or NO?</title>
+
+  <!-- ── PWA: Web App Manifest ──────────────────────────────────── -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- ── PWA: Android theme color (browser chrome) ─────────────── -->
+  <meta name="theme-color" content="#0d0d12" />
+
+  <!-- ── PWA: iOS / Safari home-screen support ─────────────────── -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="YES/NO" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -41,7 +54,16 @@
 
     <main class="vote-body">
       <div id="question-card" class="question-card">
+
+        <!-- Swipe direction labels — revealed as the user drags the card -->
+        <div id="indicator-no"  class="swipe-indicator indicator-no">✗ NO</div>
+        <div id="indicator-yes" class="swipe-indicator indicator-yes">YES ✓</div>
+
         <p id="question-text" class="question-text"></p>
+
+        <!-- Hint fades out after the first vote -->
+        <p id="swipe-hint" class="swipe-hint">← swipe or tap buttons →</p>
+
       </div>
     </main>
 
@@ -112,5 +134,20 @@
   </div>
 
   <script src="app.js"></script>
+
+  <!-- ── PWA: Service Worker registration ──────────────────────────
+       Service Workers only activate over HTTP(S) or localhost.
+       Opening index.html as a file:// URL will skip registration.
+  ───────────────────────────────────────────────────────────────── -->
+  <script>
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg  => console.log('[PWA] Service Worker registered:', reg.scope))
+          .catch(err => console.warn('[PWA] Service Worker failed:', err));
+      });
+    }
+  </script>
+
 </body>
 </html>

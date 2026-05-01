@@ -1,5 +1,10 @@
 /* ─────────────────────────────────────────────────────────────────
    YES or NO? — App Logic
+
+   Mobile Web Technologies used:
+     1. Web App Manifest + Service Worker  →  PWA (installable, offline)
+     2. Vibration API                      →  haptic feedback on each vote
+     3. Touch Events API                   →  swipe left/right to vote
    ──────────────────────────────────────────────────────────────── */
 
 // ── 100 QUESTIONS ────────────────────────────────────────────────
@@ -135,7 +140,7 @@ const Storage = {
 // ── APP ───────────────────────────────────────────────────────────
 const App = {
   votes: {},        // { questionIndex: 'yes' | 'no' | 'skip' }
-  currentIndex: 0,  // index of the question currently displayed
+  currentIndex: 0,
 
   // ── Init ───────────────────────────────────────────────────────
   init() {
@@ -143,7 +148,6 @@ const App = {
     this.votes = saved.votes;
     this.currentIndex = saved.index;
 
-    // Wire up all buttons
     this._on('btn-start',        () => this.startVoting());
     this._on('btn-view-results', () => this.showResults());
     this._on('btn-yes',          () => this.vote('yes'));
@@ -153,6 +157,9 @@ const App = {
     this._on('btn-continue',     () => this.startVoting());
     this._on('btn-reset',        () => this.reset());
     this._on('btn-home',         () => this.showScreen('screen-start'));
+
+    // ── Mobile Web Tech #3: Touch Events / Swipe Gestures
+    this.setupSwipe();
 
     this.updateStartScreen();
     this.showScreen('screen-start');
@@ -175,22 +182,22 @@ const App = {
     const startBtn = document.getElementById('btn-start');
 
     if (answered === 0) {
-      statusEl.textContent = '';
-      startBtn.textContent = 'Start Voting';
+      statusEl.textContent  = '';
+      startBtn.textContent  = 'Start Voting';
+      startBtn.disabled     = false;
     } else if (answered >= QUESTIONS.length) {
-      statusEl.textContent = 'All 100 questions answered!';
-      startBtn.textContent = 'All Done';
-      startBtn.disabled = true;
+      statusEl.textContent  = 'All 100 questions answered!';
+      startBtn.textContent  = 'All Done';
+      startBtn.disabled     = true;
     } else {
-      statusEl.textContent = `${answered} of ${QUESTIONS.length} answered`;
-      startBtn.textContent = `Continue (${QUESTIONS.length - answered} left)`;
-      startBtn.disabled = false;
+      statusEl.textContent  = `${answered} of ${QUESTIONS.length} answered`;
+      startBtn.textContent  = `Continue (${QUESTIONS.length - answered} left)`;
+      startBtn.disabled     = false;
     }
   },
 
   // ── Voting ─────────────────────────────────────────────────────
   startVoting() {
-    // Seek the first unanswered question from the beginning
     this.currentIndex = 0;
     while (
       this.currentIndex < QUESTIONS.length &&
@@ -212,25 +219,40 @@ const App = {
     const total    = QUESTIONS.length;
     const answered = Object.keys(this.votes).length;
 
-    document.getElementById('q-answered').textContent = answered;
-    document.getElementById('q-total').textContent    = total;
-    document.getElementById('progress-fill').style.width = `${(answered / total) * 100}%`;
+    document.getElementById('q-answered').textContent           = answered;
+    document.getElementById('q-total').textContent              = total;
+    document.getElementById('progress-fill').style.width        = `${(answered / total) * 100}%`;
 
     const card = document.getElementById('question-card');
-    const text = document.getElementById('question-text');
+
+    // Clear any inline transform/opacity left by a swipe gesture
+    card.style.transform  = '';
+    card.style.opacity    = '';
+    card.style.transition = '';
 
     if (animate) {
       card.classList.add('anim-enter');
       card.addEventListener('animationend', () => card.classList.remove('anim-enter'), { once: true });
     }
 
-    text.textContent = QUESTIONS[this.currentIndex];
+    document.getElementById('question-text').textContent = QUESTIONS[this.currentIndex];
   },
 
-  vote(answer) {
+  vote(answer, fromSwipe = false) {
+    // ── Mobile Web Tech #2: Vibration API
+    // Single pulse for YES, double pulse for NO, brief tick for Skip
+    if ('vibrate' in navigator) {
+      if      (answer === 'yes')  navigator.vibrate(60);
+      else if (answer === 'no')   navigator.vibrate([50, 30, 50]);
+      else                        navigator.vibrate(20);
+    }
+
+    // Hide the swipe hint after the first interaction
+    const hint = document.getElementById('swipe-hint');
+    if (hint) hint.classList.add('hidden');
+
     this.votes[this.currentIndex] = answer;
 
-    // Find next unanswered question
     let next = this.currentIndex + 1;
     while (next < QUESTIONS.length && this.votes[next] !== undefined) {
       next++;
@@ -238,42 +260,119 @@ const App = {
 
     Storage.save(this.votes, next);
 
-    // Animate exit, then load next question
-    const card   = document.getElementById('question-card');
-    const screen = document.getElementById('screen-vote');
-    const exitClass = `anim-exit-${answer}`;
-
+    // Screen background flash
     if (answer !== 'skip') {
+      const screen = document.getElementById('screen-vote');
       screen.classList.add(answer === 'yes' ? 'flash-yes' : 'flash-no');
       screen.addEventListener('animationend', () => {
         screen.classList.remove('flash-yes', 'flash-no');
       }, { once: true });
     }
 
-    card.classList.add(exitClass);
-    card.addEventListener('animationend', () => {
-      card.classList.remove(exitClass);
+    const proceed = () => {
       this.currentIndex = next;
-
       if (this.currentIndex >= QUESTIONS.length) {
         this.showResults();
         return;
       }
-
       this.renderQuestion(true);
+    };
+
+    if (fromSwipe) {
+      // The swipe handler already animated the card off screen — just load next
+      setTimeout(proceed, 60);
+      return;
+    }
+
+    // Button-tap: CSS exit animation
+    const card      = document.getElementById('question-card');
+    const exitClass = `anim-exit-${answer}`;
+    card.classList.add(exitClass);
+    card.addEventListener('animationend', () => {
+      card.classList.remove(exitClass);
+      proceed();
     }, { once: true });
+  },
+
+  // ── Mobile Web Tech #3: Touch Events API — Swipe to vote ───────
+  setupSwipe() {
+    const card   = document.getElementById('question-card');
+    const indYes = document.getElementById('indicator-yes');
+    const indNo  = document.getElementById('indicator-no');
+
+    let startX = 0, startY = 0, dragging = false;
+
+    // Record finger-down position
+    card.addEventListener('touchstart', e => {
+      startX   = e.touches[0].clientX;
+      startY   = e.touches[0].clientY;
+      dragging = true;
+      card.style.transition = 'none'; // disable CSS transitions while dragging
+    }, { passive: true });
+
+    // Drag the card and reveal the YES/NO label
+    card.addEventListener('touchmove', e => {
+      if (!dragging) return;
+
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+
+      // Ignore mostly-vertical movement (let the page scroll)
+      if (Math.abs(dy) > Math.abs(dx) * 1.4) return;
+
+      const rotate = dx / 18; // subtle tilt follows the drag
+      card.style.transform = `translateX(${dx * 0.45}px) rotate(${rotate}deg)`;
+
+      // Fade in the matching label as swipe distance grows
+      const strength   = Math.min(Math.abs(dx) / 80, 1);
+      indYes.style.opacity = dx > 20  ? strength : 0;
+      indNo.style.opacity  = dx < -20 ? strength : 0;
+    }, { passive: true });
+
+    // On finger-up: commit if past threshold, otherwise snap back
+    card.addEventListener('touchend', e => {
+      if (!dragging) return;
+      dragging = false;
+
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+
+      // Reset direction labels
+      indYes.style.opacity = 0;
+      indNo.style.opacity  = 0;
+
+      // 80px threshold; swipe must be more horizontal than vertical
+      if (Math.abs(dx) >= 80 && Math.abs(dx) > Math.abs(dy)) {
+        const answer    = dx > 0 ? 'yes' : 'no';
+        const direction = dx > 0 ? 1 : -1;
+
+        // Fly the card off screen in the swipe direction
+        card.style.transition = 'transform 0.25s ease-in, opacity 0.2s ease-in';
+        card.style.transform  = `translateX(${direction * (window.innerWidth + 100)}px) rotate(${direction * 22}deg)`;
+        card.style.opacity    = '0';
+
+        // Pass fromSwipe=true so vote() skips its own CSS exit animation
+        this.vote(answer, true);
+      } else {
+        // Not far enough — spring back to center
+        card.style.transition = 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)';
+        card.style.transform  = '';
+        card.addEventListener('transitionend', () => {
+          card.style.transition = '';
+        }, { once: true });
+      }
+    }, { passive: true });
   },
 
   // ── Results ────────────────────────────────────────────────────
   showResults() {
-    const yesList  = document.getElementById('yes-list');
-    const noList   = document.getElementById('no-list');
+    const yesList = document.getElementById('yes-list');
+    const noList  = document.getElementById('no-list');
     yesList.innerHTML = '';
     noList.innerHTML  = '';
 
     let yesCount = 0, noCount = 0, skipCount = 0;
 
-    // Walk questions in order so the list is readable
     for (let i = 0; i < QUESTIONS.length; i++) {
       const answer = this.votes[i];
       if (!answer) continue;
@@ -289,7 +388,6 @@ const App = {
       }
     }
 
-    // Empty-state placeholders
     if (yesCount === 0) this._appendEmpty(yesList, 'No YES answers yet.');
     if (noCount  === 0) this._appendEmpty(noList,  'No NO answers yet.');
 
@@ -302,13 +400,13 @@ const App = {
     const contBtn   = document.getElementById('btn-continue');
 
     if (remaining > 0) {
-      remEl.textContent      = `${remaining} question${remaining !== 1 ? 's' : ''} remaining`;
-      contBtn.textContent    = 'Continue Voting';
-      contBtn.disabled       = false;
+      remEl.textContent   = `${remaining} question${remaining !== 1 ? 's' : ''} remaining`;
+      contBtn.textContent = 'Continue Voting';
+      contBtn.disabled    = false;
     } else {
-      remEl.textContent      = 'All questions answered!';
-      contBtn.textContent    = 'All Done';
-      contBtn.disabled       = true;
+      remEl.textContent   = 'All questions answered!';
+      contBtn.textContent = 'All Done';
+      contBtn.disabled    = true;
     }
 
     this.showScreen('screen-results');
