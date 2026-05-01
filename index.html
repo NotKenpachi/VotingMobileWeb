@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YES or NO?</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── START SCREEN ─────────────────────────────────────────── -->
+  <div id="screen-start" class="screen active">
+    <div class="start-inner">
+      <div class="logo">
+        <span class="logo-yes">YES</span>
+        <span class="logo-or">or</span>
+        <span class="logo-no">NO</span>
+        <span class="logo-mark">?</span>
+      </div>
+      <p class="tagline">100 dilemmas. No maybe. No in-between.</p>
+      <button id="btn-start" class="btn btn-primary">Start Voting</button>
+      <button id="btn-view-results" class="btn btn-outline">View Results</button>
+      <p id="start-status" class="start-status"></p>
+    </div>
+  </div>
+
+  <!-- ── VOTE SCREEN ───────────────────────────────────────────── -->
+  <div id="screen-vote" class="screen">
+
+    <header class="vote-header">
+      <div class="progress-meta">
+        <span id="q-answered">0</span>
+        <span class="progress-sep">/</span>
+        <span id="q-total">100</span>
+        <span class="progress-label">answered</span>
+      </div>
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+    </header>
+
+    <main class="vote-body">
+      <div id="question-card" class="question-card">
+        <p id="question-text" class="question-text"></p>
+      </div>
+    </main>
+
+    <footer class="vote-footer">
+      <button id="btn-yes" class="vote-btn yes-btn">
+        <span class="vote-icon">✓</span>
+        <span class="vote-label">YES</span>
+      </button>
+      <button id="btn-no" class="vote-btn no-btn">
+        <span class="vote-icon">✗</span>
+        <span class="vote-label">NO</span>
+      </button>
+    </footer>
+
+    <nav class="vote-nav">
+      <button id="btn-skip" class="btn-ghost">Skip</button>
+      <button id="btn-nav-results" class="btn-ghost">Results</button>
+    </nav>
+
+  </div>
+
+  <!-- ── RESULTS SCREEN ───────────────────────────────────────── -->
+  <div id="screen-results" class="screen">
+
+    <header class="results-header">
+      <h1 class="results-title">Your Results</h1>
+      <div class="tally">
+        <div class="tally-box tally-yes">
+          <span id="tally-yes-count">0</span>
+          <label>YES</label>
+        </div>
+        <div class="tally-box tally-no">
+          <span id="tally-no-count">0</span>
+          <label>NO</label>
+        </div>
+        <div class="tally-box tally-skip">
+          <span id="tally-skip-count">0</span>
+          <label>Skipped</label>
+        </div>
+      </div>
+      <div id="results-remaining" class="results-remaining"></div>
+    </header>
+
+    <main class="results-body">
+
+      <section class="answers-section">
+        <h2 class="section-heading yes-heading">
+          <span class="section-icon">✓</span> YES Answers
+        </h2>
+        <ul id="yes-list" class="answer-list"></ul>
+      </section>
+
+      <section class="answers-section">
+        <h2 class="section-heading no-heading">
+          <span class="section-icon">✗</span> NO Answers
+        </h2>
+        <ul id="no-list" class="answer-list"></ul>
+      </section>
+
+    </main>
+
+    <footer class="results-footer">
+      <button id="btn-continue" class="btn btn-primary">Continue Voting</button>
+      <button id="btn-reset" class="btn btn-danger">Reset All Votes</button>
+      <button id="btn-home" class="btn-ghost">Back to Home</button>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
